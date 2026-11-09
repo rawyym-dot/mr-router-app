@@ -23,8 +23,14 @@ jobs:
           name=$(jq -r .name release/version.json)
           jq -r .notes release/version.json > notes.md
           cp release/MrRouter.apk "MrRouter-$code.apk"
+          beta=$(jq -r '.beta // false' release/version.json)
           if gh release view "build-$code" >/dev/null 2>&1; then
             gh release upload "build-$code" "MrRouter-$code.apk" --clobber
+            gh release edit "build-$code" --title "$name" --notes-file notes.md
+            # beta -> stable promotion: flip "beta" to false in version.json and push
+            if [ "$beta" = "false" ]; then gh release edit "build-$code" --prerelease=false --latest; fi
+          elif [ "$beta" = "true" ]; then
+            gh release create "build-$code" "MrRouter-$code.apk" --title "$name (تجريبية)" --notes-file notes.md --prerelease
           else
             gh release create "build-$code" "MrRouter-$code.apk" --title "$name" --notes-file notes.md --latest
           fi
